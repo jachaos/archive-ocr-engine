@@ -1,13 +1,13 @@
 # An OCR engine for a historical military archive
 
 **Two GPUs, five readers and not a single invented word.**
-Preliminary technical report (19 pages, English and Spanish). Work in progress.
+Preliminary technical report (18 pages, English and Spanish). Work in progress.
 
 > Status: the engine is built and has been tested on about 4,000 real pages. The main work is still ahead: the archive's 300,000+ pages. Code and scans are not released.
 
 ## The problem
 
-The [Museo de Historia Militar](https://museohistoriamilitar.com) in Málaga is a private collection devoted to Spanish military uniforms. It is closed to the public while I look for new premises, so I am digitising its uniform archive to put the documentation and the catalogue online in the meantime: more than 300,000 pages of regulations, booklets, official gazettes, army lists, plates and handwritten documents from the 18th to the 20th century.
+The job is to digitise an archive of Spanish military uniform documentation: more than 300,000 pages of regulations, booklets, official gazettes, army lists, plates and handwritten documents from the 18th to the 20th century.
 
 ![One shelf of the archive: bound volumes and binders by year](figures/archive_shelf.jpg)
 
