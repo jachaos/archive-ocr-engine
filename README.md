@@ -71,6 +71,10 @@ Six portraits, three systems, nothing written to the database.
 | Gemini 3.8 Flash | Cloud, about 20 s per photo | Tight and reliable | Gives specific names with moderate confidence |
 | DeepSeek Flash | Cloud, about 40 s per photo | Same elements, boxes displaced upwards | Very cautious; leaves most pieces unnamed |
 
+![The same portrait analysed by the three systems](figures/detection_comparison.jpg)
+
+*The same portrait analysed by the three systems. Photograph: Christian Franzen. Fondo Documental de RTVE / Colección Christian Franzen.*
+
 Provisional conclusions: Gemini is clearly the best of the three at locating and identifying, and the local detector is not enough for small pieces. The confidence a model reports is not reliable on its own, so it is stored as given, shown with its source, and a person confirms. No system found every small piece, so those will keep needing human review. Before running this on the full set, accuracy will be measured on a hand-reviewed sample.
 
 ### Quality
@@ -93,7 +97,7 @@ The next step is a block of about 10,000 pages with a 200-page reference set, th
 
 - `report/archive_ocr_engine_report_public.pdf` — the report in English
 - `report/informe_ocr_archivo_uniformidad_publico.pdf` — the report in Spanish
-- `figures/` — the twelve figures of the report, a photo of the archive and two screenshots of the viewer
+- `figures/` — the twelve figures of the report, a photo of the archive, two screenshots of the viewer and the detection comparison
 
 ## Author
 
@@ -102,4 +106,4 @@ Javier Chaos — software architect / tech lead (.NET, Azure, Python, computer v
 
 ## Licence
 
-Report, text and figures: CC BY 4.0.
+Report, text and figures: CC BY 4.0, with one exception. The photograph in `figures/detection_comparison.jpg` is by Christian Franzen and comes from the Fondo Documental de RTVE (Colección Christian Franzen). It is shown here for research purposes, is not covered by the CC BY licence and remains subject to the terms of its source.
