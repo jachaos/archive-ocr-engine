@@ -3,7 +3,7 @@
 **Two GPUs, five readers and not a single invented word.**
 Preliminary technical report (18 pages, English and Spanish). Work in progress.
 
-> Status: the engine is built and has been tested on about 4,000 real pages. The main work is still ahead: the archive's 300,000+ pages. Code and scans are not released.
+> Status: the engine is built and has been tested on about 4,000 real pages, and a viewer to read and correct its output is in use. The main work is still ahead: the archive's 300,000+ pages. Code and scans are not released.
 
 ## The problem
 
@@ -45,6 +45,40 @@ Three lessons so far: marking instead of guessing prevents errors nobody would l
 
 ![What worked and what did not](figures/fig12_worked_not.png)
 
+## Progress update: the viewer
+
+The engine now has a reading room. The viewer is a web application built in Node.js that shows what the pipeline has stored and lets a person correct it. It runs no models itself. Every record keeps which engine produced it and in which run, so the viewer can say who did what.
+
+So far it holds 267 sources with 7,278 pages, 151,299 text records and 2,599 figures extracted from the books.
+
+![Viewer home: search box and the size of the corpus so far](figures/viewer_home.jpg)
+
+- **Boxes in the right place.** Each engine returns its boxes in its own convention: pixels, coordinates normalised to 0-1000, `x,y` or `y,x`. The viewer converts all of them to a percentage of the page, so a box lands in the same place whatever size the image is shown at. The rule for the main engine was worked out by measuring its boxes against the PDF text layer and against the ink, with an error under 0.5 %. That fixed the displaced boxes and the figure crops that were coming out cut.
+- **One colour per region type.** Title, text, table, figure, caption, and headers and page numbers, which are dimmed because they are not content. Image and text are linked: pointing at a paragraph highlights its box, and the other way round.
+- **Tables rebuilt.** The engine delivers each table as HTML with merged cells. The viewer cleans it (table tags and text only, never scripts), draws it once with its title next to the original image, and keeps the rows underneath as records that can be copied and corrected one by one.
+- **Corrections with history.** Pipeline and viewer share one SQLite database: the pipeline writes, the viewer reads, and the viewer only writes what a person corrects, always keeping the previous value.
+- **Versioned analysis of photographs.** Each system that looks at a photograph adds its own version without overwriting the earlier ones, so two systems can be compared side by side on the same image.
+
+![Gallery of figures extracted from the books, filterable by type](figures/viewer_figures.jpg)
+
+### First test: locating and identifying small objects in photographs
+
+Six portraits, three systems, nothing written to the database.
+
+| System | Where | Boxes | Identification |
+|---|---|---|---|
+| Grounding DINO (open-vocabulary detector) | Local laptop GPU, about 1 s per pass | Finds the large elements; a lot of noise on small pieces | None |
+| Gemini 3.8 Flash | Cloud, about 20 s per photo | Tight and reliable | Gives specific names with moderate confidence |
+| DeepSeek Flash | Cloud, about 40 s per photo | Same elements, boxes displaced upwards | Very cautious; leaves most pieces unnamed |
+
+Provisional conclusions: Gemini is clearly the best of the three at locating and identifying, and the local detector is not enough for small pieces. The confidence a model reports is not reliable on its own, so it is stored as given, shown with its source, and a person confirms. No system found every small piece, so those will keep needing human review. Before running this on the full set, accuracy will be measured on a hand-reviewed sample.
+
+### Quality
+
+- Code reviewed in eight rounds by a second AI model, always in the same session so it remembers what it has seen. Every finding was checked before fixing it.
+- Accessibility to WCAG 2.2 AA: everything works from the keyboard, focus is always visible, text reflows at 320 px.
+- Security: strict headers, listens on localhost only, write rate limit, validation of everything written.
+
 ## What is not measured yet
 
 This is a preliminary report and it says so where it matters:
@@ -59,7 +93,7 @@ The next step is a block of about 10,000 pages with a 200-page reference set, th
 
 - `report/archive_ocr_engine_report_public.pdf` — the report in English
 - `report/informe_ocr_archivo_uniformidad_publico.pdf` — the report in Spanish
-- `figures/` — the twelve figures of the report and a photo of the archive
+- `figures/` — the twelve figures of the report, a photo of the archive and two screenshots of the viewer
 
 ## Author
 
