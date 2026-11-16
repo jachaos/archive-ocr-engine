@@ -3,7 +3,7 @@
 **Two GPUs, five readers and not a single invented word.**
 Preliminary technical report (18 pages, English and Spanish). Work in progress.
 
-> Status: the engine is built and has been tested on about 4,000 real pages, and a viewer to read and correct its output is in use. The main work is still ahead: the archive's 300,000+ pages. Code and scans are not released.
+> Status: the full run has started. 459 of 1,794 scanned books are done (29,079 pages, about 11 % of the pages), with 536,558 text records so far. A viewer to read and correct the output is in use. Code and scans are not released.
 
 ## The problem
 
@@ -45,11 +45,54 @@ Three lessons so far: marking instead of guessing prevents errors nobody would l
 
 ![What worked and what did not](figures/fig12_worked_not.png)
 
+## Progress update: the full run
+
+The engine is now working through the whole archive, not a test batch.
+
+| | |
+|---|---|
+| Books in the corpus | 3,557 |
+| Scanned books that need OCR | 1,794 books, 256,825 pages |
+| Books with a usable text layer | 58 books, 6,136 pages |
+| Loose plates | 1,683 items, 2,033 pages |
+| Duplicates found and skipped | 22 books |
+| **Books read so far** | **459 (29,079 pages)** |
+| **Text records** | **536,558** |
+| Pages by type | prose 16,996, tables 9,679, illustrations 2,404 |
+| Photographs analysed | 985, with 9,510 elements located and 3,393 identifications proposed |
+
+About 227,000 pages are still to be read.
+
+**What worked**
+
+- The orchestrator as the main engine: a median of 11 minutes per book, 56 at most, with high quality.
+- Splitting large books (over 100 MB) and dense ones (over 60 pages go in blocks of 40), which removed the timeouts.
+- A supervisor that waits for one phase to finish and starts the next.
+- A failsafe on the cloud model: on a rate-limit error it waits, on a payment error it stops and warns.
+
+**What did not, and what was changed**
+
+| Problem | Change |
+|---|---|
+| A one-hour timeout cut off slow books | Raised to 90 minutes |
+| A shorter 30-minute timeout failed even more | Reverted: dense books simply need the time |
+| A progress watchdog gave false alarms | Removed: the table review stage does not advance the page counter |
+| A test sending 10 % of the text to a cloud model produced 14,802 errors | Caused by too many requests at once. Failsafe added and concurrency limited; to be tested again |
+| Two books kept blocking the queue | Marked as discarded and skipped |
+
+**New lessons**
+
+1. **The "text" route was misleading.** About 95 % of the PDFs that came with a text layer were scans with a poor OCR layer underneath, not real text. Only 58 are true digital documents; the other 1,326 had to go back to the OCR queue.
+2. **Speed depends on density, not only on length.** The cloud model answers a short text in 2.5 seconds, but takes 64 seconds for 15,000 characters and 113 for 37,000.
+3. **Most of the data is in the least glamorous books.** Army lists (rosters of personnel) are 72 % of all records.
+
+Still open: whether to process the loose plates at all, and whether to add a third worker.
+
 ## Progress update: the viewer
 
 The engine now has a reading room. The viewer is a web application built in Node.js that shows what the pipeline has stored and lets a person correct it. It runs no models itself. Every record keeps which engine produced it and in which run, so the viewer can say who did what.
 
-So far it holds 267 sources with 7,278 pages, 151,299 text records and 2,599 figures extracted from the books.
+When this section was written it held 267 sources with 7,278 pages, 151,299 text records and 2,599 figures extracted from the books, which is what the screenshot shows; the current figures are in the section above.
 
 ![Viewer home: search box and the size of the corpus so far](figures/viewer_home.jpg)
 
