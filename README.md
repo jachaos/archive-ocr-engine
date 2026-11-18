@@ -3,7 +3,7 @@
 **Two GPUs, five readers and not a single invented word.**
 Preliminary technical report (18 pages, English and Spanish). Work in progress.
 
-> Status: the full run has started. 459 of 1,794 scanned books are done (29,079 pages, about 11 % of the pages), with 536,558 text records so far. A viewer to read and correct the output is in use. Code and scans are not released.
+> Status: the full run continues. 776 sources are read (31,789 pages, 616,420 text records, 3.86 million text lines with their box). The output now feeds a database with reference catalogues and a first model that derives a uniform from the regulations. Code and scans are not released.
 
 ## The problem
 
@@ -88,6 +88,95 @@ About 227,000 pages are still to be read.
 
 Still open: whether to process the loose plates at all, and whether to add a third worker.
 
+## Progress update: from text to a database
+
+The text the engine produces now feeds a single database, and several AI systems work on it with separate roles. One person sets the criteria and approves every change.
+
+| | Previous update | Now |
+|---|---|---|
+| Sources with pages read | 267 | 776 (of 4,199 catalogue entries) |
+| Pages | 7,278 | 31,789 |
+| Text records | 151,299 | 616,420 |
+| Text lines with their box | n/a | 3,859,521 |
+| Figures extracted | 2,599 | 7,046 |
+| Photographs | about 350 | 985 |
+
+### Who proposes does not apply
+
+- The OCR pipeline writes books, pages, records, lines and figures.
+- One AI session owns the schema and the catalogue data, and is the only one that changes them.
+- A second AI session researches and proposes. It delivers each change as a batch: one SQL file in a transaction plus a note saying what changes and which source supports it.
+- Each batch is run twice on a copy (the second run must change nothing), approved by a person, reviewed and applied by the session that owns the database, and then checked read-only on the real database.
+
+No catalogue or uniform batch has had to be reverted. The one rollback was a clean-up that archived 59 records too many, and it could be undone because nothing is ever deleted: what is surplus is marked, not removed.
+
+### Reference catalogues
+
+- **Periods.** 38 periods in three levels, by reign and form of government. The 13 consecutive top-level ones cover 1700 to 1950 with no gaps. Every date carries a state: checked, unchecked, or sources disagree.
+- **Conflicts and battles.** 62 conflicts and 83 battles.
+- **Organisation.** 76 corps and 60 ranks with their dates of validity, and 121 units taken from a 1909 army yearbook, each with its page as evidence. Units are never written from memory.
+
+A book has two dates: the period it deals with and the year it was published. The 3,326 period assignments keep them apart, and all are stored as proposals until a person confirms them.
+
+![Catalogue of periods in the viewer](figures/viewer_periods.png)
+
+### From the regulation to the uniform
+
+The model separates four things: the regulation, the provision (what the regulation orders about one garment for one subject, with its citation), the subject (for example, a line infantry officer) and the version (the complete uniform for a date range and an order of dress).
+
+Versions are computed, not written by hand. Each provision that comes into force opens a date range, a regulation that replaces another also closes the ones that amended it, conflicts between provisions are flagged and not decided, and versions a person has confirmed are left alone. Every citation is checked against the image of the page, because the text layer of those 19th-century PDFs has too many errors.
+
+So far: 24 regulations, 39 garments, 63 provisions, 4 subjects and 20 computed versions (521 elements) for the infantry of 1861 to 1869, all as proposals.
+
+### Identifying insignia in photographs, measured
+
+On 34 pieces that can be told apart clearly:
+
+| Configuration | Right | Wrong |
+|---|---|---|
+| Gemini, whole photograph, old prompt | 12 | 5 |
+| Gemini, whole photograph, with expert criteria | 9 | 9 |
+| Gemini, enlarged crop, with expert criteria | 24 | 1 |
+| DeepSeek, enlarged crop, with expert criteria | 11 | 14 |
+
+The method that came out of it has two steps: locate the piece, then identify the crop enlarged to 640 px with the expert's criteria written into the prompt. One caveat: the reference for this test was made by an AI applying the expert's criteria, not by an expert checking piece by piece.
+
+On a sample of 50 photographs the confidence Gemini reports did help to sort: at 0.90 or above, 94 % was right or probable; under 0.70, only 28 %.
+
+### Cleaning what was already scanned
+
+- **Repeated records.** The pipeline sometimes stored the same page twice, whole and in parts. 17,244 records were exact repeats (3 %), on 614 pages of 182 books. In the worst case, an 1847 army list, 40 % of the records were repeats. Some copies did not even agree with each other, with a date shifted to the next row. The safe ones were archived, 415 pages are queued to be read again and the fault is fixed, although only a few hours of processing confirm it so far.
+- **Confused digits** in the gazettes: "1" read as "4" gives impossible years such as 4874.
+- **Catalogue entries.** 29 corrections, mostly of year. 44 entries marked as duplicates and 14 as discarded, with nothing deleted.
+- **Illegible marks.** 41,949 in the text. The API to resolve them is built and tested. None is resolved yet.
+
+Work on uniforms is paused until this clean-up is done, because counts and extractions inherit every duplicate.
+
+### What worked and what did not
+
+Worked:
+
+1. Separating who proposes from who applies, and testing every change on a copy.
+2. A second AI as reviewer, with every finding checked before fixing it. In 16 rounds it found real faults, including an endpoint that served any file, the database itself included.
+3. Writing the expert's criteria into the prompt as rules.
+4. Measuring before deciding: page resolution, OCR engines and identification systems were all chosen with figures.
+5. Proposing and confirming without deleting.
+
+Did not work:
+
+1. Trusting what a model says about its own output. Asked to draw an infantry captain of 1861, the model reported that it had met the whole checklist and failed on five points.
+2. Correcting a generated image by giving instructions about the image. After a few rounds the model stops fixing and starts making new mistakes. Regenerating from an improved prompt with a drawn schema works better.
+3. DeepSeek for small shapes: displaced boxes and round medals taken for crosses. It is useful for reviewing code and data, not for this.
+4. Systematic OCR errors that were seen late. Repeated records had been there since the first day.
+5. Automatic reading of dates and subjects: two modern order numbers were read as a range of years and filed under the 1820s.
+6. Depending on the balance of paid services: a long run stopped when the credit ran out.
+
+![Attempts 2 and 8 at an infantry captain of 1861, generated by an AI model, with their errors marked](figures/captain_1861_progress.png)
+
+*Both images are AI-generated. Attempt 2 had the prompt only; attempt 8, the best of eight, had the prompt and a drawn schema. Attempt 8 fixed the ros, the stars, the cuffs, the shave and the face, but lost the lapels, and five details are still wrong.*
+
+Three things to take away: no model output is data until someone checks it against the source; traceability is what makes correction possible; and clean before you build on top.
+
 ## Progress update: the viewer
 
 The engine now has a reading room. The viewer is a web application built in Node.js that shows what the pipeline has stored and lets a person correct it. It runs no models itself. Every record keeps which engine produced it and in which run, so the viewer can say who did what.
@@ -122,7 +211,7 @@ Provisional conclusions: Gemini is clearly the best of the three at locating and
 
 ### Quality
 
-- Code reviewed in eight rounds by a second AI model, always in the same session so it remembers what it has seen. Every finding was checked before fixing it.
+- Code and data batches reviewed in 16 rounds by a second AI model, always in the same session so it remembers what it has seen. Every finding was checked before fixing it.
 - Accessibility to WCAG 2.2 AA: everything works from the keyboard, focus is always visible, text reflows at 320 px.
 - Security: strict headers, listens on localhost only, write rate limit, validation of everything written.
 
@@ -140,7 +229,7 @@ The next step is a block of about 10,000 pages with a 200-page reference set, th
 
 - `report/archive_ocr_engine_report_public.pdf` — the report in English
 - `report/informe_ocr_archivo_uniformidad_publico.pdf` — the report in Spanish
-- `figures/` — the twelve figures of the report, a photo of the archive, two screenshots of the viewer and the detection comparison
+- `figures/` — the twelve figures of the report, a photo of the archive, three screenshots of the viewer, the detection comparison and two AI-generated images with their errors marked
 
 ## Author
 
