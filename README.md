@@ -3,7 +3,7 @@
 **Two GPUs, five readers and not a single invented word.**
 Preliminary technical report (18 pages, English and Spanish). Work in progress.
 
-> Status: the full run continues. Latest snapshot: 1,312 of 1,965 scanned documents read through the vision route and 10 of 70 through the text route, 799,936 text records, about 36,668 illegible marks pending. The output now feeds a database with reference catalogues and a first model that derives a uniform from the regulations. A step that cleans show-through and stains from the page before the OCR is tested on a sample and about to enter the pipeline. Code and scans are not released.
+> Status: the full run continues. Latest snapshot: 1,312 of 1,965 scanned documents read through the vision route and 10 of 70 through the text route, 799,936 text records, about 36,668 illegible marks pending. The output now feeds a database with reference catalogues and a first model that derives a uniform from the regulations. Pages are now cleaned of show-through and stains before the OCR. Code and scans are not released.
 
 ## The problem
 
@@ -219,7 +219,7 @@ Three things to take away: no model output is data until someone checks it again
 
 Not every page arrives clean. Part of the archive was scanned by others and cannot be scanned again, so the OCR has to work with what there is: the back of the page showing through, ink transferred from the facing page, rust spots and yellowed paper. The OCR read that ghost text as real lines, mirrored or not, put it into the reading order and left `[ilegible]` gaps that then went to paid vision models. In the first review of the reading order, almost every page failed because of ghost sections.
 
-The fix is one step before the OCR, and it uses no AI. That is on purpose: an image "cleaned" by a generative model looks good and invents letters. The rule is the project's usual one: **deleting printed text is worse than leaving a stain.** Nothing is redrawn; only ink that is not printed is removed. The OCR reads the cleaned copy; the original image is kept for figures, review and the viewer.
+The fix is one step before the OCR, now in the pipeline, and it uses no AI. That is on purpose: an image "cleaned" by a generative model looks good and invents letters. The rule is the project's usual one: **deleting printed text is worse than leaving a stain.** Nothing is redrawn; only ink that is not printed is removed. The OCR reads the cleaned copy; the original image is kept for figures, review and the viewer.
 
 ![Page 96 of an 1851 book before and after cleaning, with a zoom on the mirrored show-through](figures/page_cleaning_before_after.jpg)
 
@@ -271,13 +271,49 @@ Calibrated on 1,671 pages of 45 documents, against what PaddleOCR reads on the o
 
 The 30 are endpapers and blank leaves, versos with only show-through from the other side, and one page of stains. Dark covers with a title, title pages with large type and one very faded title page that could be faint print stay out of the rule and are processed. Cost: 0.6 s per page, the same computation as the cleaning.
 
+### In the pipeline
+
+Each page is now cleaned before PaddleOCR, with its profile and two neighbouring pages on each side. PaddleOCR, the second reader, Gemini and the foreign-ink check all work on the cleaned page; figures and handwritten documents still use the original, with the same rotation, enlargement and deskewing. Every page stores what the cleaning did (profile, reference letters, strokes removed, whether a neighbour matched). Both the cleaning and the blank-page check sit behind switches, globally and per document.
+
+Lines that come out entirely as foreign ink, with at most eight letters read (such as `[ilegible] y [ilegible]`), are no longer sent to Gemini. Nothing is deleted: the line stays marked, and if three letters or fewer were read it is flagged as residue to remove in the viewer.
+
+First A/B test of stage 1 (30 pages per document, marks not resolved):
+
+| Document | `[ilegible]` marks | Lines entirely `[ilegible]` | Lines read | Time |
+|---|---|---|---|---|
+| Dense tables | 591 → 140 | 501 → 99 | 2,550 → 2,902 | 236 → 202 s |
+| Little text | 50 → 26 | 45 → 26 | 156 → 141 | 23 → 41 s |
+
+The second document is slower because there is almost no OCR to save and the cleaning costs about 0.6 s per page.
+
+### Mirror test
+
+If a line reads better flipped than straight, it is text from the back of the page. This test needs no neighbouring page, so it covers what the neighbour search cannot: the first and last leaf of a batch, loose plates, double pages and scans without the reverse.
+
+1. PaddleOCR lines with confidence under 0.85 are taken.
+2. Each one is cropped, flipped horizontally, and both versions are read by the PaddleOCR recogniser, without line detection.
+3. It is a mirror if the flipped version reads with confidence of 0.85 or more, at least 0.2 better than the straight one, with three or more letters or digits and at least one letter that is not symmetric.
+4. Nothing is deleted: the line is marked `mirror`, with what it reads when flipped, and treated as noise, out of the reading order and out of the `[ilegible]` marks.
+
+Two safeguards were added after checking cases by hand: if the straight reading is only letters that look the same flipped ("XXX", "VIII", "HOMO"), nothing is decided; and if the crop has ink as dark as the page's printed text, it is not marked, which keeps lines that mix a printed word with ghost text, and page numbers.
+
+On the same 100 pages:
+
+| Page the OCR reads | Doubtful lines | Marked as mirror | Still doubtful | s/page |
+|---|---|---|---|---|
+| Not cleaned | 822 | 457 | 379 | 0.09 |
+| **Cleaned, with neighbours (production)** | **266** | **11** | **255** | **0.03** |
+| Cleaned, without neighbours | 274 | 13 | 261 | 0.03 |
+
+All 68 checked by hand on uncleaned pages and all 24 on cleaned pages were ghost text, except the cases the safeguards now protect. On its own, on an uncleaned page, the test removes more than half the doubtful lines; on a cleaned page, the cleaning has already removed almost all the ghost text and the test picks up what little it misses. The doubtful lines that remain do not read better flipped, and what they are is still to be looked at.
+
 ### What worked and what did not
 
 Worked: deciding per component instead of per pixel; Otsu's cut instead of a fixed one (on page 96 the ghost peaked at 0.19 and the print at 0.78); filling with the surrounding paper instead of white, which left ghost letters in white; and stretching contrast inside letters without cutting, because a hard cut thinned and broke the strokes.
 
 Did not work: binarising, which breaks thin strokes and loses twice as many good lines; whitening everything outside the text regions, which depends on the layout model getting the regions right and is still being studied. The colour step barely acted on the pages tested, because the stains were already paler than the cut.
 
-Next: plug the cleaning and the blank-page check into the pipeline behind a switch and measure, in production, `[ilegible]` gaps per page, calls to paid models and pages sent back for reordering; repeat the reading-order review with clean pages; and check a hand-reviewed sample for pale printed text that should have stayed.
+Next: measure in production the calls and tokens of the paid models per page and how many pages are sent back for reordering; repeat the reading-order review with clean pages; check a hand-reviewed sample for pale printed text that should have stayed; and test the colour step on pages with strong brown stains and red flourishes.
 
 Open question: are library stamps text or stains? With the current rule, pale ones are removed.
 
