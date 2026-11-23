@@ -321,7 +321,7 @@ Open question: are library stamps text or stains? With the current rule, pale on
 
 Cleaning a scanned page is not one filter but a recipe: straighten, remove the frame, flatten the paper, remove show-through, remove specks, and different books need different values. Tuning that in code, run after run, is slow and blind, so the recipes are designed in LimpiaPáginas ("page cleaner"), a visual editor that runs on the same machine and is used from the browser. Pages never leave the computer.
 
-![LimpiaPáginas: the recipe as connected boxes, the result of each step, and a scanned plate before and after](figures/limpiapaginas.jpg)
+![LimpiaPáginas: the recipe as connected boxes, the text lines found by the neural detector in green, and the same text original, cleaned and in black and white](figures/limpiapaginas.jpg)
 
 **How a recipe is designed**
 
