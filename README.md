@@ -3,7 +3,7 @@
 **Two GPUs, five readers and not a single invented word.**
 Preliminary technical report (18 pages, English and Spanish). Work in progress.
 
-> Status: the full run continues. Latest snapshot: 1,312 of 1,965 scanned documents read through the vision route and 10 of 70 through the text route, 799,936 text records, about 36,668 illegible marks pending. The output now feeds a database with reference catalogues and a first model that derives a uniform from the regulations. Pages are now cleaned of show-through and stains before the OCR. Code and scans are not released.
+> Status: the full run continues. Latest snapshot: 1,312 of 1,965 scanned documents read through the vision route and 10 of 70 through the text route, 799,936 text records, about 36,668 illegible marks pending. The output now feeds a database with reference catalogues and a first model that derives a uniform from the regulations. Pages are now cleaned of show-through and stains before the OCR. The pipeline code and the scans are not released; the page-cleaning editor is, as [LimpiaPáginas](https://github.com/jachaos/limpiapaginas).
 
 ## The problem
 
@@ -321,6 +321,8 @@ Open question: are library stamps text or stains? With the current rule, pale on
 
 Cleaning a scanned page is not one filter but a recipe: straighten, remove the frame, flatten the paper, remove show-through, remove specks, and different books need different values. Tuning that in code, run after run, is slow and blind, so the recipes are designed in LimpiaPáginas ("page cleaner"), a visual editor that runs on the same machine and is used from the browser. Pages never leave the computer.
 
+It is open source (MIT), with its manual and a few sample pages: [github.com/jachaos/limpiapaginas](https://github.com/jachaos/limpiapaginas).
+
 ![LimpiaPáginas: the recipe as connected boxes, the text lines found by the neural detector in green, and the same text original, cleaned and in black and white](figures/limpiapaginas.jpg)
 
 **How a recipe is designed**
@@ -372,6 +374,7 @@ The next step is a hand-reviewed sample of up to 100 pages, one per document, to
 
 - `report/archive_ocr_engine_report_public.pdf` — the report in English
 - `report/informe_ocr_archivo_uniformidad_publico.pdf` — the report in Spanish
+- [LimpiaPáginas](https://github.com/jachaos/limpiapaginas) — the page-cleaning editor, in its own repository
 - `figures/` — the twelve figures of the report, a photo of the archive, three screenshots of the viewer, the detection comparison, two AI-generated images with their errors marked, a page before and after cleaning, and the cleaning editor
 
 ## Author
