@@ -7,7 +7,7 @@ Preliminary technical report (18 pages, English and Spanish). Work in progress.
 
 ## The problem
 
-The job is to digitise an archive of Spanish military uniform documentation: more than 300,000 pages of regulations, booklets, official gazettes, army lists, plates and handwritten documents from the 18th to the 20th century.
+The job is to digitise an archive of Spanish military uniform documentation: more than 300,000 pages of regulations, booklets, official gazettes, army lists, plates and handwritten documents from the 18th to the 20th century. Scanning is slow, so the archive moves in four states: catalogued, scanned, read by the engine, and not read yet. Several hundred books are still waiting to be scanned.
 
 ![One shelf of the archive: bound volumes and binders by year](figures/archive_shelf.jpg)
 
@@ -89,7 +89,7 @@ The engine is now working through the whole archive, not a test batch.
 
 | | |
 |---|---|
-| Books in the corpus | 3,557 |
+| Scanned books in the corpus | 3,557 |
 | Scanned books that need OCR | 1,794 books, 256,825 pages |
 | Books with a usable text layer | 58 books, 6,136 pages |
 | Loose plates | 1,683 items, 2,033 pages |
@@ -99,7 +99,7 @@ The engine is now working through the whole archive, not a test batch.
 | Pages by type | prose 16,996, tables 9,679, illustrations 2,404 |
 | Photographs analysed | 985, with 9,510 elements located and 3,393 identifications proposed |
 
-About 227,000 pages are still to be read.
+About 227,000 scanned pages are still to be read, besides the books not scanned yet.
 
 **What worked**
 
@@ -132,7 +132,7 @@ The text the engine produces now feeds a single database, and several AI systems
 
 | | Viewer update | Now |
 |---|---|---|
-| Sources with pages read | 267 | 776 (of 4,199 catalogue entries) |
+| Sources with pages read | 267 | 776 (of 4,199 catalogue entries, which include books not scanned yet) |
 | Pages | 7,278 | 31,789 |
 | Text records | 151,299 | 616,420 |
 | Text lines with their box | n/a | 3,859,521 |
@@ -186,7 +186,7 @@ On a sample of 50 photographs the confidence Gemini reports did help to sort: at
 - **Repeated records.** The pipeline sometimes stored the same page twice, whole and in parts. 17,244 records were exact repeats (3 %), on 614 pages of 182 books. In the worst case, an 1847 army list, 40 % of the records were repeats. Some copies did not even agree with each other, with a date shifted to the next row. The safe ones were archived, 415 pages are queued to be read again and the fault is fixed, although only a few hours of processing confirm it so far.
 - **Confused digits** in the gazettes: "1" read as "4" gives impossible years such as 4874.
 - **Catalogue entries.** 29 corrections, mostly of year. 44 entries marked as duplicates and 14 as discarded, with nothing deleted.
-- **Illegible marks.** 41,949 in the text of the full run. The API to resolve them is built and tested; none of these is resolved yet.
+- **Illegible marks.** 41,949 in the text of the full run. About 10,000 have since been cleaned: marks that were stains rather than text, and corrected text. That kind of mark is what the page cleaning described below is meant to prevent. The API to resolve the rest is built and tested.
 
 Work on uniforms is paused until this clean-up is done, because counts and extractions inherit every duplicate.
 
