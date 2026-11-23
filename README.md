@@ -3,7 +3,7 @@
 **Two GPUs, five readers and not a single invented word.**
 Preliminary technical report (18 pages, English and Spanish). Work in progress.
 
-> Status: the full run continues. 776 sources are read (31,789 pages, 616,420 text records, 3.86 million text lines with their box). The output now feeds a database with reference catalogues and a first model that derives a uniform from the regulations. A step that cleans show-through and stains from the page before the OCR is tested on a sample and about to enter the pipeline. Code and scans are not released.
+> Status: the full run continues. Latest snapshot: 1,312 of 1,965 scanned documents read through the vision route and 10 of 70 through the text route, 799,936 text records, about 36,668 illegible marks pending. The output now feeds a database with reference catalogues and a first model that derives a uniform from the regulations. A step that cleans show-through and stains from the page before the OCR is tested on a sample and about to enter the pipeline. Code and scans are not released.
 
 ## The problem
 
@@ -250,13 +250,34 @@ PaddleOCR before and after on 100 pages of the corpus: 7,044 lines, of which 5,6
 
 "Lost" means a good line of the original that does not appear afterwards or changes a lot. Normalising alone, which removes nothing, already gives about 65: that is the noise of the comparison, because the OCR splits lines differently. Three of the chosen profile's cases were checked by hand, and in all three the text is complete in the cleaned image.
 
+### Pages with no text
+
+A page with no text does not go through the OCR or any model: it is left empty in the output and marked `blank`. The decision is made with OpenCV on the cleaned page, and only when all of these hold:
+
+- fewer than 150 letter-shaped strokes remain;
+- there is no line of any size: three or more strokes of similar height, aligned and in sequence (so large titles count, which a count by letter size missed);
+- almost no stroke is left (under 0.2 % of the page), so that a handwritten page, with joined-up words, is not taken for empty;
+- there are no large dark areas (under 20 % of the page), because covers and plates can carry light letters on dark;
+- if the cleaning removed many letter-shaped strokes (150 or more), it must be because they match a mirrored neighbouring page; otherwise it could be very faded print, and the page is processed;
+- the page has no text layer in the PDF.
+
+Calibrated on 1,671 pages of 45 documents, against what PaddleOCR reads on the original page:
+
+| Version of the rule | Pages that would be skipped | With some line readable by PaddleOCR |
+|---|---|---|
+| 1: fewer than 25 letters and fewer than 2 lines | 18 | 1 (a section title) |
+| 2: lines of any size | 36 | 1 (a dark cover with light letters) |
+| **3: the rule above (covers and faded print protected)** | **30 (1.8 %)** | **0** |
+
+The 30 are endpapers and blank leaves, versos with only show-through from the other side, and one page of stains. Dark covers with a title, title pages with large type and one very faded title page that could be faint print stay out of the rule and are processed. Cost: 0.6 s per page, the same computation as the cleaning.
+
 ### What worked and what did not
 
 Worked: deciding per component instead of per pixel; Otsu's cut instead of a fixed one (on page 96 the ghost peaked at 0.19 and the print at 0.78); filling with the surrounding paper instead of white, which left ghost letters in white; and stretching contrast inside letters without cutting, because a hard cut thinned and broke the strokes.
 
 Did not work: binarising, which breaks thin strokes and loses twice as many good lines; whitening everything outside the text regions, which depends on the layout model getting the regions right and is still being studied. The colour step barely acted on the pages tested, because the stains were already paler than the cut.
 
-Next: plug the step into the pipeline behind a switch and measure, in production, `[ilegible]` gaps per page, calls to paid models and pages sent back for reordering; repeat the reading-order review with clean pages; and check a hand-reviewed sample for pale printed text that should have stayed.
+Next: plug the cleaning and the blank-page check into the pipeline behind a switch and measure, in production, `[ilegible]` gaps per page, calls to paid models and pages sent back for reordering; repeat the reading-order review with clean pages; and check a hand-reviewed sample for pale printed text that should have stayed.
 
 Open question: are library stamps text or stains? With the current rule, pale ones are removed.
 
