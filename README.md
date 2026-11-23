@@ -3,7 +3,7 @@
 **Two GPUs, five readers and not a single invented word.**
 Preliminary technical report (18 pages, English and Spanish). Work in progress.
 
-> Status: the full run continues. 776 sources are read (31,789 pages, 616,420 text records, 3.86 million text lines with their box). The output now feeds a database with reference catalogues and a first model that derives a uniform from the regulations. Code and scans are not released.
+> Status: the full run continues. 776 sources are read (31,789 pages, 616,420 text records, 3.86 million text lines with their box). The output now feeds a database with reference catalogues and a first model that derives a uniform from the regulations. A step that cleans show-through and stains from the page before the OCR is tested on a sample and about to enter the pipeline. Code and scans are not released.
 
 ## The problem
 
@@ -215,6 +215,51 @@ Provisional conclusions: Gemini is clearly the best of the three at locating and
 - Accessibility to WCAG 2.2 AA: everything works from the keyboard, focus is always visible, text reflows at 320 px.
 - Security: strict headers, listens on localhost only, write rate limit, validation of everything written.
 
+## Progress update: cleaning the page before OCR
+
+Not every page arrives clean. Part of the archive was scanned by others and cannot be scanned again, so the OCR has to work with what there is: the back of the page showing through, ink transferred from the facing page, rust spots and yellowed paper. The OCR read that ghost text as real lines, mirrored or not, put it into the reading order and left `[ilegible]` gaps that then went to paid vision models. In the first review of the reading order, almost every page failed because of ghost sections.
+
+The fix is one step before the OCR, and it uses no AI. That is on purpose: an image "cleaned" by a generative model looks good and invents letters. The rule is the project's usual one: **deleting printed text is worse than leaving a stain.** Nothing is redrawn; only ink that is not printed is removed. The OCR reads the cleaned copy; the original image is kept for figures, review and the viewer.
+
+![Page 96 of an 1851 book before and after cleaning, with a zoom on the mirrored show-through](figures/page_cleaning_before_after.jpg)
+
+### How it works
+
+Classic computer vision with OpenCV and NumPy, under a second per page. Decisions are made per connected ink component, not per pixel: a printed letter has a dark core even when its edges are pale, so it is not thinned.
+
+1. **Ink map.** The page is divided by its own background (a morphological closing at 1.5 times the letter height), so 0 is paper and 1 is ink.
+2. **Tone of the printed text.** The darkest point of each letter-sized component, measured by zones (eight lines by a third of the width).
+3. **Cut by tone.** Printed and ghost letters form two groups; Otsu's method finds the cut between them when they are well separated, and a fixed fraction of the tone is used when they are not. The cut never goes above 70 % of the zone's tone.
+4. **Ghost from other pages.** Up to two neighbouring pages on each side are aligned over the pale components, flipped and straight. Pale components that fall mostly on the text of a matching neighbour are removed.
+5. **Colour** (only on coloured paper or colour pages): what is more colourful than the ink and paler than it, such as brown stains and rust, is removed.
+6. **Fill, normalise and levels.** Removed areas are filled with the surrounding paper, the background is normalised to white, and contrast is stretched inside the letters without cutting them.
+
+Safeguards: anything touching a printed letter stays with it; pages with fewer than 40 reference letters are not touched; the search for neighbours is skipped on landscape or double pages. Three profiles (black and white, coloured paper, colour pages) are chosen automatically from the saturation of paper and ink, and every page stores what was done to it (cut, matching neighbours, fraction of ink removed) so it can be reviewed or undone.
+
+### Results
+
+PaddleOCR before and after on 100 pages of the corpus: 7,044 lines, of which 5,618 good (confidence of 0.95 or more) and 822 doubtful (under 0.8).
+
+| Combination | Doubtful lines removed | Good lines "lost" | New good lines | Mean confidence | s/page |
+|---|---|---|---|---|---|
+| **Otsu tone cut + neighbours + normalise + levels (chosen)** | **565 (69 %)** | 94 | 134 | 0.991 | 0.86 |
+| The same without neighbours | 543 | 98 | 133 | 0.991 | 0.13 |
+| Fixed cut at 35 % of the tone | 511 | 66 | 123 | 0.991 | 0.86 |
+| Chosen profile + binarisation (Sauvola) | 635 | 209 | 145 | 0.987 | 0.89 |
+| Normalising only | 203 | 64 | — | — | — |
+
+"Lost" means a good line of the original that does not appear afterwards or changes a lot. Normalising alone, which removes nothing, already gives about 65: that is the noise of the comparison, because the OCR splits lines differently. Three of the chosen profile's cases were checked by hand, and in all three the text is complete in the cleaned image.
+
+### What worked and what did not
+
+Worked: deciding per component instead of per pixel; Otsu's cut instead of a fixed one (on page 96 the ghost peaked at 0.19 and the print at 0.78); filling with the surrounding paper instead of white, which left ghost letters in white; and stretching contrast inside letters without cutting, because a hard cut thinned and broke the strokes.
+
+Did not work: binarising, which breaks thin strokes and loses twice as many good lines; whitening everything outside the text regions, which depends on the layout model getting the regions right and is still being studied. The colour step barely acted on the pages tested, because the stains were already paler than the cut.
+
+Next: plug the step into the pipeline behind a switch and measure, in production, `[ilegible]` gaps per page, calls to paid models and pages sent back for reordering; repeat the reading-order review with clean pages; and check a hand-reviewed sample for pale printed text that should have stayed.
+
+Open question: are library stamps text or stains? With the current rule, pale ones are removed.
+
 ## What is not measured yet
 
 This is a preliminary report and it says so where it matters:
@@ -229,7 +274,7 @@ The next step is a block of about 10,000 pages with a 200-page reference set, th
 
 - `report/archive_ocr_engine_report_public.pdf` — the report in English
 - `report/informe_ocr_archivo_uniformidad_publico.pdf` — the report in Spanish
-- `figures/` — the twelve figures of the report, a photo of the archive, three screenshots of the viewer, the detection comparison and two AI-generated images with their errors marked
+- `figures/` — the twelve figures of the report, a photo of the archive, three screenshots of the viewer, the detection comparison, two AI-generated images with their errors marked, and a page before and after cleaning
 
 ## Author
 
