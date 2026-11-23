@@ -317,6 +317,47 @@ Next: measure in production the calls and tokens of the paid models per page and
 
 Open question: are library stamps text or stains? With the current rule, pale ones are removed.
 
+## The cleaning workbench: LimpiaPáginas
+
+Cleaning a scanned page is not one filter but a recipe: straighten, remove the frame, flatten the paper, remove show-through, remove specks, and different books need different values. Tuning that in code, run after run, is slow and blind, so the recipes are designed in LimpiaPáginas ("page cleaner"), a visual editor that runs on the same machine and is used from the browser. Pages never leave the computer.
+
+![LimpiaPáginas: the recipe as connected boxes, the result of each step, and a scanned plate before and after](figures/limpiapaginas.jpg)
+
+**How a recipe is designed**
+
+- Each step is a box, and boxes are connected one after another. There are 36 processes: geometry, paper and background, noise, contrast, binarisation, text detection and neural networks. New ones are added as a Python file dropped in a folder.
+- Every box shows its own result as a thumbnail, and the selected one is shown full size with its data, an explanation and every parameter documented. With automatic mode on, changing a value reruns the recipe.
+- Several steps have a second output that shows exactly what they removed (the frame, the specks) or what they kept (the ink, in the show-through step). That is the check that a step is not taking text with it.
+- A box can be switched off to see the page without that step, or swapped with its neighbour without rewiring.
+
+**How it is computed**
+
+- Python and OpenCV, with PyTorch and ONNX Runtime on the GPU when there is one, and automatic fallback to the CPU if a process fails there. Black and white on a large page takes 341 ms on the CPU and 31 ms on the GPU.
+- The engine runs the diagram box by box and keeps each result, so work is not repeated.
+- Once a recipe works on a few pages, it is run on a whole folder, from the editor or the command line. The output holds the cleaned pages, a CSV with one row per page (angle corrected, frame lines removed, lines and letters counted, text or not) and a copy of the recipe used, so it is always known how a page was cleaned. The originals are never modified.
+
+**Three recipes come ready**
+
+| Recipe | Output | Use |
+|---|---|---|
+| General cleaning | White paper, text in its original greys | The default: greys are what modern OCR and vision models read best |
+| Black and white (Sauvola) | Pure black and white | Classic OCR engines, or very pale text |
+| Detect text | Nothing saved: whether the page has text, and where | Checking detection; separating blank pages, plates and covers |
+
+The pipeline reads greys, not black and white: on our test pages, binarising lost twice as many good lines (see above). The detectors always run after cleaning, because on an uncleaned page they can take show-through for text.
+
+**How a step is accepted**
+
+The letters detected on every test page are counted before and after adding the step. Adding the frame removal gave 71,098 letters before and 71,101 after: nothing lost. There are 84 automated tests.
+
+**Limits**
+
+- It works on images; pages are extracted from PDFs first with a separate tool, keeping the original scan when there is one.
+- The source resolution sets the ceiling: some PDFs carry pages of about 750 × 1,200 pixels, and cleaning does not create detail.
+- Short isolated rules (under 15 % of the page side) are left by the frame step.
+- The recipes are tuned to these samples; other collections may need other values.
+- The editor works page by page. Matching neighbouring pages and the mirror test, described above, need the whole document, so they live in the pipeline step. The effect on OCR is measured there, not in the editor.
+
 ## What is not measured yet
 
 This is a preliminary report and it says so where it matters:
@@ -331,7 +372,7 @@ The next step is a hand-reviewed sample of up to 100 pages, one per document, to
 
 - `report/archive_ocr_engine_report_public.pdf` — the report in English
 - `report/informe_ocr_archivo_uniformidad_publico.pdf` — the report in Spanish
-- `figures/` — the twelve figures of the report, a photo of the archive, three screenshots of the viewer, the detection comparison, two AI-generated images with their errors marked, and a page before and after cleaning
+- `figures/` — the twelve figures of the report, a photo of the archive, three screenshots of the viewer, the detection comparison, two AI-generated images with their errors marked, a page before and after cleaning, and the cleaning editor
 
 ## Author
 
